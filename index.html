@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Futsal League</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // important:true  -> utilitas Tailwind menang atas utilitas Bootstrap (spacing tidak bergeser)
+  // preflight:false -> reset CSS diserahkan ke Bootstrap (Reboot)
+  tailwind.config = { important: true, corePlugins: { preflight: false } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0f172a;--neon:#39ff88;--line:#e2e8f0}
+
+  /* Pengganti preflight Tailwind (utilitas border Tailwind butuh ini) */
+  *,::before,::after{border-style:solid;border-width:0}
+  button{background-color:transparent}
+
+  body{font-family:Inter,system-ui,sans-serif;background:#f1f5f9;color:var(--ink);padding-bottom:84px;-webkit-tap-highlight-color:transparent}
+
+  /* Card -> variabel Bootstrap */
+  .card{--bs-card-bg:#fff;--bs-card-border-color:var(--line);--bs-card-border-radius:14px;
+    --bs-card-spacer-y:12px;--bs-card-spacer-x:12px;display:block;padding:12px}
+
+  /* Tombol -> variabel Bootstrap */
+  .btn{--bs-btn-border-radius:12px;--bs-btn-font-weight:800;--bs-btn-padding-x:20px;--bs-btn-padding-y:0;
+    min-height:48px;min-width:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .1s}
+  .btn:active{transform:scale(.97)}
+  .btn-p{--bs-btn-bg:var(--ink);--bs-btn-border-color:var(--ink);--bs-btn-color:var(--neon);
+    --bs-btn-hover-bg:#1e293b;--bs-btn-hover-border-color:#1e293b;--bs-btn-hover-color:var(--neon);
+    --bs-btn-active-bg:#1e293b;--bs-btn-active-border-color:#1e293b;--bs-btn-active-color:var(--neon);
+    --bs-btn-disabled-bg:var(--ink);--bs-btn-disabled-border-color:var(--ink);--bs-btn-disabled-color:var(--neon)}
+  .btn-g{--bs-btn-bg:var(--neon);--bs-btn-border-color:var(--neon);--bs-btn-color:var(--ink);
+    --bs-btn-hover-bg:#2de076;--bs-btn-hover-border-color:#2de076;--bs-btn-hover-color:var(--ink);
+    --bs-btn-active-bg:#2de076;--bs-btn-active-border-color:#2de076;--bs-btn-active-color:var(--ink);
+    --bs-btn-disabled-bg:var(--neon);--bs-btn-disabled-border-color:var(--neon);--bs-btn-disabled-color:var(--ink)}
+  .btn-r{--bs-btn-bg:#ef4444;--bs-btn-border-color:#ef4444;--bs-btn-color:#fff;
+    --bs-btn-hover-bg:#dc2626;--bs-btn-hover-border-color:#dc2626;--bs-btn-hover-color:#fff;
+    --bs-btn-active-bg:#dc2626;--bs-btn-active-border-color:#dc2626;--bs-btn-active-color:#fff;
+    --bs-btn-disabled-bg:#ef4444;--bs-btn-disabled-border-color:#ef4444;--bs-btn-disabled-color:#fff}
+  .btn-o{--bs-btn-border-width:2px;--bs-btn-border-color:var(--ink);--bs-btn-color:var(--ink);
+    --bs-btn-hover-bg:var(--ink);--bs-btn-hover-color:#fff;--bs-btn-hover-border-color:var(--ink);
+    --bs-btn-active-bg:var(--ink);--bs-btn-active-color:#fff;--bs-btn-active-border-color:var(--ink)}
+  .btn-sm{--bs-btn-font-size:.8rem}
+  .btn:disabled{opacity:.55;pointer-events:none}
+
+  /* Input -> dipakai bersama class form-control */
+  .inp{width:100%;min-height:48px;border:2px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;box-shadow:none;outline:none;transition:border-color .2s}
+  .inp:focus{border-color:var(--ink);box-shadow:none}
+
+  /* LIVE badge -> dipakai bersama class badge rounded-pill */
+  .live{background:var(--neon)!important;color:var(--ink)!important;font-weight:900;font-size:11px;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{opacity:.45}}
+  .sk{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:sh 1.2s infinite;border-radius:12px}
+  @keyframes sh{to{background-position:-200% 0}}
+  nav button{flex:1;min-height:64px;font-size:11px;font-weight:700;color:#94a3b8;border:0}
+  nav button.on{color:var(--neon)}
+  th,td{padding:8px 6px;text-align:center;font-size:13px} th{color:#64748b;font-weight:700}
+  td:nth-child(2),th:nth-child(2){text-align:left}
+  .card table td:nth-child(2),.card table th:nth-child(2){position:sticky;left:0;background:inherit;z-index:1;min-width:120px}
+  .card table tr:first-child{background:#fff}
+  nav button:focus-visible,.btn:focus-visible{outline:3px solid var(--neon);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+
+  /* Hilangkan panah up-down pada input number */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY LOADING GLOBAL -->
+<div id="loader" class="fixed inset-0 bg-slate-900/80 z-[9999] hidden flex-col items-center justify-center text-white backdrop-blur-sm transition-opacity">
+  <div class="spinner-border text-success mb-4" style="width:4rem;height:4rem" role="status"></div>
+  <div id="loader-txt" class="font-black text-xl tracking-wide">Memproses...</div>
+</div>
+
+<header class="px-4 pt-4 pb-5 text-white shadow-sm sticky top-0 z-10" style="background:var(--ink);padding-top:calc(16px + env(safe-area-inset-top,0px))">
+  <div class="text-2xl font-black" id="liga">Futsal League</div>
+  <div class="text-xs text-slate-400" id="sub"></div>
+</header>
+<main id="view" class="p-3 max-w-xl mx-auto space-y-3"></main>
+<nav class="fixed bottom-0 inset-x-0 flex shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10" style="background:var(--ink);padding-bottom:env(safe-area-inset-bottom,0px)">
+  <button data-t="jadwal">🔴<br>Live Skor</button>
+  <button data-t="klasemen">🏆<br>Klasemen</button>
+  <button data-t="statistik">📊<br>Statistik</button>
+  <button data-t="panitia">🎽<br>Panitia</button>
+</nav>
+
+<script>
+let D = null, tab = 'jadwal', PIN = sessionStorage.getItem('pin') || '', cur = null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// ====== ISI DENGAN URL WEB APP APPS SCRIPT (berakhiran /exec) ======
+const API_URL = 'https://script.google.com/macros/s/AKfycbxn-xTyG-cRGnJ4MG5GrlcV1Y4am1HRoleQzkGp9TnpeKlmF7z7Jd8FtQi3o84wSGek/exec';
+
+// Pemanggil API: menggantikan google.script.run. Content-Type text/plain menghindari preflight CORS.
+const run = async (fn, ...a) => {
+  let r;
+  try {
+    r = await fetch(API_URL, { method: 'POST', cache: 'no-store',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args: a }) });
+  } catch (e) { throw new Error('Tidak bisa terhubung ke server. Periksa internet atau URL Web App.'); }
+  let j;
+  try { j = await r.json(); }
+  catch (e) { throw new Error('Respons server tidak valid. Pastikan Web App di-deploy dengan akses "Anyone".'); }
+  if (!j.ok) throw new Error(j.error);
+  return j.data;
+};
+const tn = id => (D.teams.find(t => t.ID_Tim === id) || {}).Nama_Tim || '?';
+
+// Tambahkan class form-control Bootstrap ke semua input .inp
+const bsInputs = () => document.querySelectorAll('input.inp').forEach(i => i.classList.add('form-control'));
+
+// Fungsi Kontrol Loading Overlay
+const showLoad = (txt) => { $('#loader-txt').textContent = txt; $('#loader').classList.remove('hidden'); $('#loader').classList.add('flex'); }
+const hideLoad = () => { $('#loader').classList.add('hidden'); $('#loader').classList.remove('flex'); }
+const toast = (title, icon = 'success') =>
+  Swal.fire({ toast: true, position: 'top', timer: 1800, showConfirmButton: false, icon, title });
+const err = e => {
+  hideLoad();
+  const msg = (e && e.message || String(e)).replace(/^Error:\s*/, '');
+  if (/Sesi berakhir/.test(msg)) logout();   // token kedaluwarsa → kembali ke layar PIN
+  Swal.fire({ icon: 'error', title: 'Gagal', text: msg });
+};
+
+// Palette Warna Kartu Tim Dinamis
+const colors = [
+  ['bg-slate-800', 'border-slate-800'],
+  ['bg-blue-700', 'border-blue-700'],
+  ['bg-rose-700', 'border-rose-700'],
+  ['bg-emerald-700', 'border-emerald-700'],
+  ['bg-amber-600', 'border-amber-600'],
+  ['bg-purple-700', 'border-purple-700'],
+  ['bg-cyan-700', 'border-cyan-700']
+];
+
+let VER = null, pollBusy = false;
+async function load(quiet, bg) {
+  if (!quiet) $('#view').innerHTML = [1,2,3,4].map(() => '<div class="sk h-24"></div>').join('');
+  try { D = await run('getAll'); VER = D.ver; }
+  catch (e) { return bg ? null : err(e); }          // polling gagal = diam, tanpa popup
+  $('#liga').textContent = D.liga;
+  const n = D.matches.length, done = D.matches.filter(m => m.Status === 'Selesai').length;
+  $('#sub').textContent = D.teams.length + ' tim · ' + done + '/' + n + ' laga selesai';
+  if (bg && tab === 'panitia' && PIN) return;       // jangan timpa form panitia yang sedang diisi
+  render();
+}
+function go(t) { tab = t; cur = null; render(); scrollTo(0, 0); }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.t));
+
+function render() {
+  document.querySelector('nav').style.display = D && D.needSetup ? 'none' : '';
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  if (!D) return;
+  if (D.needSetup) { $('#view').innerHTML = vSetup(); bsInputs(); return; }
+  $('#view').innerHTML = tab === 'jadwal' ? vJadwal() : tab === 'klasemen' ? vKlasemen() : tab === 'statistik' ? vStat() : vPanitia();
+  bsInputs();
+}
+
+/* ---------- 1. PENGATURAN AWAL LIGA ---------- */
+function vSetup() {
+  return `<div class="card space-y-3"><div class="font-black text-xl">Pengaturan Awal Liga</div>
+    <p class="text-sm text-slate-500">Akses master ini wajib diisi sebelum liga dimulai.</p>
+    <input id="su-n" class="inp" placeholder="Nama liga / turnamen futsal">
+    <input id="su-p" type="password" inputmode="numeric" class="inp" placeholder="Buat PIN panitia (minimal 4 angka)">
+    <input id="su-p2" type="password" inputmode="numeric" class="inp" placeholder="Ulangi PIN">
+    
+    <div class="font-bold text-sm mt-4">Daftar Lapangan</div>
+    <div id="lap-container" class="space-y-2">
+      <input class="inp lap-inp" placeholder="Nama Lapangan 1">
+    </div>
+    <button class="btn btn-o w-full text-sm min-h-[36px]" style="border-style:dashed" onclick="addLapInput()">+ Tambah Lapangan Lagi</button>
+    <button class="btn btn-g w-full mt-6" onclick="doSetup()">Simpan Konfigurasi</button></div>`;
+}
+function addLapInput() {
+  const c = $('#lap-container');
+  const n = c.querySelectorAll('input').length + 1;
+  c.insertAdjacentHTML('beforeend', `<input class="inp lap-inp border-slate-300" placeholder="Nama Lapangan ${n}">`);
+  bsInputs();
+}
+async function doSetup() {
+  const n = $('#su-n').value.trim(), p = $('#su-p').value, p2 = $('#su-p2').value;
+  const l = Array.from(document.querySelectorAll('.lap-inp')).map(i => i.value.trim()).filter(Boolean);
+  if (!n || !l.length) return Swal.fire('Perhatian', 'Isi nama liga dan minimal 1 lapangan aktif.', 'warning');
+  if (!/^\d{4,}$/.test(p)) return Swal.fire('Perhatian', 'PIN harus angka dan minimal 4 digit.', 'warning');
+  if (p !== p2) return Swal.fire('Perhatian', 'PIN yang Anda ulangi tidak sama.', 'warning');
+  
+  showLoad('Menyimpan Konfigurasi...');
+  try {
+    const tok = await run('initConfig', n, p, l);
+    PIN = tok; sessionStorage.setItem('pin', tok); tab = 'panitia';
+    await load(true);
+    hideLoad();
+    toast('Sukses menyimpan konfigurasi liga.');
+  } catch (e) { err(e); }
+}
+
+/* ---------- 2. PUBLIK (LIVE SKOR, KLASEMEN, STAT) ---------- */
+function badge(s) { 
+  if (s === 'Live') return '<span class="badge rounded-pill live">LIVE</span>';
+  if (s === 'Selesai') return '<span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Selesai</span>';
+  return '<span class="text-xs font-bold text-slate-400">' + esc(s) + '</span>'; 
+}
+
+function mCard(m, click, isPanitiaView) {
+  const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
+  const isFinished = m.Status === 'Selesai';
+  const hScore = Number(m.Skor_Home) || 0;
+  const aScore = Number(m.Skor_Away) || 0;
+  const homeWin = isFinished && hScore > aScore;
+  const awayWin = isFinished && aScore > hScore;
+
+  let subText = '';
+  if (isPanitiaView) {
+    if (isFinished) {
+      subText = '<div class="text-xs text-slate-400 text-center mt-2">ketuk untuk melihat detil pertandingan</div>';
+    } else {
+      subText = '<div class="text-xs text-green-600 font-bold text-center mt-2">Ketuk untuk mulai pertandingan</div>';
+    }
+  }
+
+  return `<div class="card ${click ? 'cursor-pointer hover:border-slate-400 transition-colors' : ''}" ${click ? `onclick="openMatch('${m.ID_Match}')"` : ''}>
+    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>${esc(m.Lapangan)}</span>${badge(m.Status)}</div>
+    <div class="grid items-center gap-2 mt-2" style="grid-template-columns:1fr auto 1fr">
+      <div class="font-bold text-right flex items-center justify-end gap-1.5">
+        ${homeWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
+        <span class="truncate">${esc(tn(m.ID_Tim_Home))}</span>
+      </div>
+      <div class="text-2xl font-black">${sc}</div>
+      <div class="font-bold text-left flex items-center justify-start gap-1.5">
+        <span class="truncate">${esc(tn(m.ID_Tim_Away))}</span>
+        ${awayWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
+      </div>
+    </div>
+    ${subText}</div>`;
+}
+
+// Simpan state collapse agar tidak auto-collapse kembali
+const expandedMatches = {};
+
+function toggleCollapse(id, event) {
+  if (event) event.stopPropagation();
+  expandedMatches[id] = !expandedMatches[id];
+  const el = document.getElementById('collapse-' + id);
+  const icon = document.getElementById('icon-' + id);
+  if (expandedMatches[id]) {
+    el.classList.remove('hidden');
+    icon.style.transform = 'rotate(180deg)';
+  } else {
+    el.classList.add('hidden');
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+function pubCard(m) {
+  const matchEvents = D.events.filter(e => e.ID_Match === m.ID_Match);
+  const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
+  const isExp = !!expandedMatches[m.ID_Match];
+  const isFinished = m.Status === 'Selesai';
+  const hScore = Number(m.Skor_Home) || 0;
+  const aScore = Number(m.Skor_Away) || 0;
+  const homeWin = isFinished && hScore > aScore;
+  const awayWin = isFinished && aScore > hScore;
+
+  return `<div class="card mb-2">
+    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>${esc(m.Lapangan)}</span>${badge(m.Status)}</div>
+    <div class="grid items-center gap-2 mt-2" style="grid-template-columns:1fr auto 1fr">
+      <div class="font-bold text-right flex items-center justify-end gap-1.5">
+        ${homeWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
+        <span class="truncate">${esc(tn(m.ID_Tim_Home))}</span>
+      </div>
+      <div class="text-2xl font-black">${sc}</div>
+      <div class="font-bold text-left flex items-center justify-start gap-1.5">
+        <span class="truncate">${esc(tn(m.ID_Tim_Away))}</span>
+        ${awayWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
+      </div>
+    </div>
+
+    <div class="border-t border-slate-100 mt-3 pt-2 flex justify-between items-center cursor-pointer select-none" onclick="toggleCollapse('${m.ID_Match}', event)">
+      <span class="text-[11px] text-slate-500 font-bold">Rincian Gol & Kartu</span>
+      <span id="icon-${m.ID_Match}" class="text-slate-400 font-bold transition-transform duration-200" style="transform: ${isExp ? 'rotate(180deg)' : 'rotate(0deg)'}">▼</span>
+    </div>
+
+    <div id="collapse-${m.ID_Match}" class="${isExp ? '' : 'hidden'} mt-2 pt-2 border-t border-dashed border-slate-200 space-y-1.5 text-xs">
+      ${matchEvents.length ? matchEvents.map(e => {
+        const isHome = e.ID_Tim === m.ID_Tim_Home;
+        const p = D.players.find(x => x.ID_Pemain === e.ID_Pemain);
+        const pName = p ? `#${p.No_Punggung} ${p.Nama_Pemain}` : '?';
+        return `<div class="flex items-center justify-between py-1 px-1">
+          <div class="${isHome ? 'text-left font-medium text-slate-700' : 'invisible'}">
+            ${isHome ? `<span>${ico[e.Kategori]} <b>${esc(pName)}</b></span>` : ''}
+          </div>
+          <div class="${!isHome ? 'text-right font-medium text-slate-700' : 'invisible'}">
+            ${!isHome ? `<span><b>${esc(pName)}</b> ${ico[e.Kategori]}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('') : '<div class="text-slate-400 text-center py-1">Belum ada statistik tercatat.</div>'}
+    </div>
+  </div>`;
+}
+
+let fStat = 'Semua';
+function setStat(st) { fStat = st; render(); }
+
+function vJadwal() {
+  if (!D.matches.length) return '<div class="card text-center text-slate-500">Live Skor belum tersedia / jadwal belum disusun.</div>';
+  const chips = '<div class="flex gap-2 overflow-x-auto pb-1">' + ['Semua', 'Live', 'Belum Mulai', 'Selesai'].map(st =>
+    `<button class="btn btn-sm ${fStat === st ? 'btn-p' : 'btn-o'}" style="min-height:36px;white-space:nowrap" onclick="setStat('${st}')">${st}</button>`).join('') + '</div>';
+  const list = D.matches.filter(m => fStat === 'Semua' || m.Status === fStat);
+  if (!list.length) return chips + '<div class="card text-center text-slate-500">Tidak ada pertandingan pada filter ini.</div>';
+  const live = fStat === 'Semua' ? list.filter(m => m.Status === 'Live') : [];
+  const rest = list.filter(m => live.indexOf(m) < 0);   // jangan tampil dobel (id elemen collapse harus unik)
+  const g = {}; rest.forEach(m => (g[m.Matchgame] = g[m.Matchgame] || []).push(m));
+  return chips
+    + (live.length ? '<h2 class="font-black text-lg pt-2">🔴 Sedang berlangsung</h2>' + live.map(pubCard).join('') : '')
+    + Object.keys(g).map(k => '<h2 class="font-black text-lg pt-2">Matchgame ' + k + '</h2>' + g[k].map(pubCard).join('')).join('');
+}
+const formOf = id => D.matches
+  .filter(m => m.Status === 'Selesai' && (m.ID_Tim_Home === id || m.ID_Tim_Away === id))
+  .slice(-5).map(m => {
+    const h = m.ID_Tim_Home === id;
+    const f = Number(h ? m.Skor_Home : m.Skor_Away), a = Number(h ? m.Skor_Away : m.Skor_Home);
+    const c = f > a ? '#22c55e' : f < a ? '#ef4444' : '#94a3b8';
+    const t = f > a ? 'Menang' : f < a ? 'Kalah' : 'Seri';
+    return `<i title="${t}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c}"></i>`;
+  }).join(' ');
+
+function vKlasemen() {
+  if (!D.teams.length) return '<div class="card text-center text-slate-500">Belum ada tim yang diregistrasi.</div>';
+  const allDone = D.matches.length > 0 && D.matches.every(m => m.Status === 'Selesai');
+  
+  return `<div class="card overflow-x-auto"><table class="table table-sm align-middle mb-0 w-full">
+    <tr style="background:#fff">
+      <th>#</th>
+      <th class="text-left">Tim</th>
+      <th title="Main">Mn</th>
+      <th title="Menang">M</th>
+      <th title="Seri">S</th>
+      <th title="Kalah">K</th>
+      <th title="Gol memasukkan">GM</th>
+      <th title="Gol kemasukan">GK</th>
+      <th title="Selisih gol">SG</th>
+      <th>Poin</th>
+    </tr>
+    ${D.teams.map((t, i) => {
+      let bgStyle = 'background-color:#fff;';
+      if (i === 0) bgStyle = 'background-color: #fef08a;'; // Emas
+      else if (i === 1) bgStyle = 'background-color: #e2e8f0;'; // Perak
+      else if (i === 2) bgStyle = 'background-color: #fed7aa;'; // Perunggu
+
+      let medal = '';
+      if (allDone) {
+        if (i === 0) medal = '🥇 ';
+        else if (i === 1) medal = '🥈 ';
+        else if (i === 2) medal = '🥉 ';
+      }
+
+      return `<tr class="border-t border-slate-200" style="${bgStyle}">
+        <td class="font-bold">${i + 1}</td>
+        <td class="font-bold text-left"><div>${medal}${esc(t.Nama_Tim)}</div><div class="mt-1">${formOf(t.ID_Tim)}</div></td>
+        <td>${t.Main}</td>
+        <td>${t.M}</td>
+        <td>${t.S}</td>
+        <td>${t.K}</td>
+        <td>${t.GM}</td>
+        <td>${t.GK}</td>
+        <td>${t.SG}</td>
+        <td class="font-black text-[var(--ink)]">${t.Poin}</td>
+      </tr>`;
+    }).join('')}
+    </table></div><p class="text-xs text-slate-500 mt-2">Mn main · M menang (3) · S seri (1) · K kalah · GM/GK gol memasukkan/kemasukan · SG selisih gol. Titik di bawah nama tim = 5 laga terakhir (hijau menang, abu seri, merah kalah). Urutan: Poin → head-to-head (poin, selisih, gol) → selisih gol → gol memasukkan.</p>`;
+}
+
+
+function vStat() {
+  const top = (k, ttl, emoji) => {
+    const l = D.stats.filter(s => s[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 10);
+    return `<div class="card"><div class="font-black mb-2">${emoji} ${ttl}</div>${l.length ? l.map((s, i) =>
+      `<div class="flex justify-between py-2 border-t border-slate-100">
+        <span>${i + 1}. <b>${esc(s.nama)}</b> <span class="text-slate-500 text-xs truncate max-w-[100px] inline-block align-bottom">${esc(s.tim)}</span></span>
+        <b class="text-xl font-black">${s[k]}</b>
+      </div>`).join('') : '<div class="text-slate-400 text-sm">Belum ada catatan aktivitas.</div>'}</div>`;
+  };
+  return top('Gol', 'Top Skor', '⚽') + top('Hijau', 'Kartu Hijau (Fair Play)', '🟩') + top('Kuning', 'Kartu Kuning', '🟨') + top('Merah', 'Kartu Merah', '🟥');
+}
+
+/* ---------- 3. PANITIA DASHBOARD ---------- */
+function vPanitia() {
+  if (!PIN) return `<div class="card space-y-3"><div class="font-black text-lg">Otorisasi Panitia</div>
+    <input id="pin" type="password" inputmode="numeric" class="inp" placeholder="Masukkan PIN">
+    <button class="btn btn-p w-full" onclick="login()">Buka Kunci Panel</button></div>`;
+    
+  if (cur) return vMatch();
+  
+  let h = `<div class="font-black text-lg mb-1">Manajemen Tim & Pemain</div>
+    <p class="text-[11px] text-slate-500 mb-4 leading-tight">Ubah nama tim, nomor, atau tambah anggota kapan saja. Minimal 6 pemain per tim.</p>
+    <div id="reg-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pt-6 mt-2">`;
+
+  if (D.teams.length === 0) {
+    if (!D.isFinalized) h += genTeamCard('', '', [{id:'', no:'', name:''}], 0, false);
+  } else {
+    D.teams.forEach((t, index) => {
+      const players = D.players.filter(p => p.ID_Tim === t.ID_Tim);
+      if (players.length === 0) players.push({id:'', no:'', name:''});
+      h += genTeamCard(t.ID_Tim, t.Nama_Tim, players, index, D.isFinalized);
+    });
+  }
+
+  if (!D.isFinalized) {
+    h += `<div class="rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors min-h-[220px] t-add-btn" onclick="addT()">
+            <span class="text-6xl text-slate-300 font-light">+</span>
+          </div>`;
+  }
+  h += `</div>`;
+
+  if (D.isFinalized) {
+    h += `<button class="btn btn-p w-full shadow-md mb-8" onclick="saveReg()">💾 Simpan Anggota Tim Saja</button>`;
+  } else {
+    h += `<button class="btn btn-p w-full shadow-md mb-2" onclick="saveReg()">💾 Simpan & Update Data Tim</button>
+          <button class="btn btn-o w-full bg-slate-900 text-white shadow-md mb-8" onclick="finalizeTeamsModal()">🔒 Finalisasi Tim</button>`;
+  }
+
+  h += `<div class="border-t-2 border-slate-200 border-dashed mb-6 pt-2"></div>
+        <div class="font-black text-lg mb-2">Jadwal Pertandingan</div>
+        <div id="panitia-jadwal-container">`;
+
+  const g = {}; D.matches.forEach(m => (g[m.Lapangan] = g[m.Lapangan] || []).push(m));
+  if (D.matches.length > 0) {
+    Object.keys(g).forEach(k => {
+      h += `<h2 class="font-bold text-sm text-slate-500 uppercase tracking-widest mt-4 mb-2">${esc(k)}</h2>
+            <div class="space-y-2">${g[k].map(m => mCard(m, true, true)).join('')}</div>`;
+    });
+  } else {
+    h += `<div class="text-sm text-slate-500 text-center py-4 bg-white border border-slate-200 rounded-xl mb-4 shadow-sm">Belum ada jadwal tersusun.</div>`;
+  }
+  
+  h += `</div>`;
+
+  h += `<div class="border-t-2 border-slate-200 border-dashed mt-8 mb-6 pt-6"></div>
+    <div class="flex flex-col gap-3">
+      <button class="btn btn-o w-full bg-white shadow-sm" onclick="gen()">📅 Buat Jadwal Pertandingan</button>
+      <div class="flex gap-3">
+        <button class="btn btn-o flex-1 bg-white shadow-sm" onclick="logout()">Keluar</button>
+        <button class="btn btn-r flex-1 shadow-sm" onclick="doReset()">⚠️ Reset Sistem</button>
+      </div>
+    </div>`;
+    
+  return h;
+}
+
+function genTeamCard(tid, tname, players, idx, isFinalized) {
+  const c = colors[idx % colors.length];
+  let h = `<div class="rounded-xl border-2 ${c[1]} shadow-sm t-card flex flex-col bg-white relative" data-tid="${tid}">`;
+  
+  if (!isFinalized) {
+    h += `<button class="absolute -top-3 -right-3 w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-black shadow-md border-2 border-white z-20 text-lg leading-none pb-1" onclick="deleteTeamCard(this)" title="Hapus Tim">&times;</button>`;
+  }
+
+  h += `<div class="${c[0]} p-3 rounded-t-[10px]">
+      <input class="w-full bg-transparent text-white font-black text-lg outline-none t-name placeholder:text-white/60" ${isFinalized ? 'readonly' : ''} placeholder="Ketik Nama Tim..." value="${esc(tname)}">
+    </div>
+    <div class="p-2 space-y-2 flex-1 p-list bg-slate-50">
+      <div class="flex gap-2 px-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+        <div class="w-16 text-center">Nomor</div>
+        <div class="flex-1 px-2">Nama Pemain</div>
+        <div class="w-6"></div>
+      </div>`;
+    
+  players.forEach(p => {
+    h += `<div class="flex gap-2 p-row items-center" data-pid="${p.id || p.ID_Pemain || ''}">
+      <input type="number" min="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="inp w-16 px-1 min-h-[40px] h-10 p-no border-slate-300 text-center font-bold text-sm" placeholder="No." value="${p.no || p.No_Punggung || ''}">
+      <input class="inp flex-1 px-2 min-h-[40px] h-10 p-name border-slate-300 text-sm" placeholder="Opsional" value="${esc(p.name || p.Nama_Pemain || '')}">
+      <button class="text-red-400 font-bold px-1 text-xl hover:text-red-600" onclick="this.parentElement.remove()" title="Hapus">&times;</button>
+    </div>`;
+  });
+  
+  h += `</div>
+    <div class="p-3 pt-0 bg-slate-50 rounded-b-[10px]">
+      <button class="btn btn-o btn-sm w-full py-2 min-h-0 text-xs border-dashed text-slate-500 border-slate-300 bg-white" onclick="addP(this)">+ Tambah Baris Pemain</button>
+    </div>
+  </div>`;
+  return h;
+}
+
+window.addP = function(btn) {
+  const list = btn.parentElement.previousElementSibling;
+  list.insertAdjacentHTML('beforeend', `<div class="flex gap-2 p-row items-center" data-pid="">
+    <input type="number" min="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="inp w-16 px-1 min-h-[40px] h-10 p-no border-slate-300 text-center font-bold text-sm" placeholder="No.">
+    <input class="inp flex-1 px-2 min-h-[40px] h-10 p-name border-slate-300 text-sm" placeholder="Opsional">
+    <button class="text-red-400 font-bold px-1 text-xl hover:text-red-600" onclick="this.parentElement.remove()" title="Hapus">&times;</button>
+  </div>`);
+  bsInputs();
+};
+
+window.addT = async function() {
+  const isMatchStarted = D.matches.some(m => m.Status !== 'Belum Mulai');
+  if (isMatchStarted) {
+    return Swal.fire('Ditolak', 'Pertandingan liga sudah berjalan. Tidak dapat menambah tim baru!', 'error');
+  }
+
+  if (D.matches.length > 0) {
+    const ok = await Swal.fire({
+      title: 'Jadwal Sudah Terbentuk!',
+      text: 'Menambahkan tim baru otomatis akan MENGHAPUS jadwal yang sudah ada. Lanjutkan?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Hapus Jadwal & Tambah Tim'
+    });
+    if (!ok.isConfirmed) return;
+    
+    showLoad('Menghapus jadwal lama...');
+    try {
+      await run('clearSchedule', PIN);
+      D.matches = [];
+      const jc = document.getElementById('panitia-jadwal-container');
+      if (jc) jc.innerHTML = '<div class="text-sm text-center py-4 bg-red-50 border border-red-200 rounded-xl mb-4 shadow-sm text-red-600 font-bold">Jadwal lama telah dihapus. Silakan buat jadwal baru setelah menyimpan.</div>';
+      hideLoad();
+      toast('Jadwal lama berhasil dihapus.');
+    } catch(e) { err(e); return; }
+  }
+
+  const addBtn = document.querySelector('.t-add-btn');
+  const currCards = document.querySelectorAll('.t-card').length;
+  addBtn.insertAdjacentHTML('beforebegin', genTeamCard('', '', [{id:'', no:'', name:''}], currCards, false));
+  bsInputs();
+};
+
+window.deleteTeamCard = async function(btn) {
+  const isMatchStarted = D.matches.some(m => m.Status !== 'Belum Mulai');
+  if (isMatchStarted) {
+    return Swal.fire('Ditolak', 'Pertandingan sudah berjalan. Tidak dapat menghapus tim!', 'error');
+  }
+
+  if (D.matches.length > 0) {
+    const ok = await Swal.fire({
+      title: 'Jadwal Sudah Terbentuk!',
+      text: 'Menghapus tim ini otomatis akan MENGHAPUS jadwal yang sudah ada. Lanjutkan?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Hapus Tim & Reset Jadwal'
+    });
+    if (!ok.isConfirmed) return;
+    
+    showLoad('Menghapus jadwal lama...');
+    try {
+      await run('clearSchedule', PIN);
+      D.matches = [];
+      const jc = document.getElementById('panitia-jadwal-container');
+      if (jc) jc.innerHTML = '<div class="text-sm text-center py-4 bg-red-50 border border-red-200 rounded-xl mb-4 shadow-sm text-red-600 font-bold">Jadwal lama telah dihapus.</div>';
+      hideLoad();
+      toast('Jadwal lama berhasil dihapus.');
+    } catch(e) { err(e); return; }
+  } else {
+    const ok = await Swal.fire({title: 'Hapus Tim?', text: 'Hapus tim ini dari pendaftaran?', icon: 'warning', showCancelButton: true});
+    if (!ok.isConfirmed) return;
+  }
+  
+  btn.closest('.t-card').remove();
+};
+
+async function finalizeTeamsModal() {
+  const ok = await Swal.fire({
+    title: 'Finalisasi Tim?',
+    text: 'Setelah difinalisasi, tombol tambah/hapus tim dan tombol close bar akan disembunyikan untuk keamanan panitia.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#0f172a',
+    confirmButtonText: 'Ya, Finalisasi'
+  });
+  if (!ok.isConfirmed) return;
+
+  showLoad('Memfinalisasi Tim...');
+  try {
+    await run('finalizeTeams', PIN);
+    await load(true);
+    hideLoad();
+    toast('Tim berhasil difinalisasi.');
+  } catch(e) { err(e); }
+}
+
+async function saveReg() {
+  const payload = [];
+  let errorMsg = '';
+
+  document.querySelectorAll('#reg-form .t-card').forEach(tc => {
+    if(errorMsg) return;
+    const tName = tc.querySelector('.t-name').value.trim();
+    if (!tName) {
+      errorMsg = 'Ada kolom NAMA TIM yang masih kosong!';
+      return;
+    }
+    
+    const players = [];
+    tc.querySelectorAll('.p-row').forEach(pr => {
+      if(errorMsg) return;
+      const no = pr.querySelector('.p-no').value;
+      const name = pr.querySelector('.p-name').value.trim();
+      
+      if (name !== '' && no === '') {
+        errorMsg = `Nomor punggung wajib diisi untuk pemain "${name}" di Tim "${tName}"!`;
+        return;
+      }
+
+      if (no !== '') {
+        players.push({
+          id: pr.dataset.pid || '',
+          no: no,
+          name: name || `Anggota ${tName} ${no}`
+        });
+      }
+    });
+    payload.push({ id: tc.dataset.tid || '', name: tName, players: players });
+  });
+
+  if (errorMsg) return Swal.fire('Peringatan Form', errorMsg, 'warning');
+  if (payload.length === 0) return Swal.fire('Error', 'Minimal satu tim harus didaftarkan.', 'error');
+  
+  for (let t of payload) {
+    if (t.players.length < 6) return Swal.fire('Kurang Pemain', `Tim "${t.name}" hanya mendaftarkan ${t.players.length} orang (Minimal 6 orang).`, 'error');
+    const nos = new Set();
+    for (let p of t.players) {
+      if (nos.has(p.no)) return Swal.fire('Nomor Ganda', `Tim "${t.name}" memiliki nomor punggung ganda (${p.no}).`, 'error');
+      nos.add(p.no);
+    }
+  }
+
+  showLoad('Menyimpan Data Tim...');
+  try {
+    await run('saveRegistration', PIN, payload);
+    await load(true);
+    hideLoad();
+    toast('Sukses menyimpan data tim dan pemain.');
+  } catch(e) { err(e); }
+}
+
+async function login() {
+  const p = $('#pin').value; showLoad('Otentikasi...');
+  try {
+    const t = await run('login', p);
+    if (t) { PIN = t; sessionStorage.setItem('pin', t); await load(true); hideLoad(); }
+    else { hideLoad(); Swal.fire({icon:'error', title:'Akses ditolak', text:'PIN salah.'}); }
+  } catch (e) { err(e); }
+}
+function logout() { PIN = ''; sessionStorage.removeItem('pin'); render(); }
+
+async function gen() {
+  const t1 = D.teams[0] ? esc(D.teams[0].Nama_Tim) : 'Tim Urutan 1';
+  const t2 = D.teams[1] ? esc(D.teams[1].Nama_Tim) : 'Tim Urutan 2';
+  const tLast = D.teams.length > 0 ? esc(D.teams[D.teams.length - 1].Nama_Tim) : 'Tim Terakhir';
+
+  const r = await Swal.fire({
+    title: 'Pilih Sistem Jadwal',
+    html: `<div class="text-left text-sm text-slate-600 mt-2 space-y-3 px-1">
+            <div class="bg-blue-50 p-3 border border-blue-200 rounded-lg">
+              <b class="text-blue-900 block mb-1">📅 Berurutan (Sequential)</b>
+              Tim dipasangkan sesuai urutan saat pendaftaran.<br>
+              <i class="text-[11px] text-blue-700">Contoh: <b>${t1}</b> vs <b>${t2}</b>.</i>
+            </div>
+            <div class="bg-amber-50 p-3 border border-amber-200 rounded-lg">
+              <b class="text-amber-900 block mb-1">🎲 Acak (Randomized)</b>
+              Sistem mengocok seluruh tim secara adil sebelum dipasangkan.<br>
+              <i class="text-[11px] text-amber-700">Contoh: <b>${t1}</b> vs <b>${tLast}</b>.</i>
+            </div>
+           </div>`,
+    icon: 'info',
+    showCancelButton: true,
+    showDenyButton: true,
+    confirmButtonColor: '#2563eb',
+    denyButtonColor: '#d97706',
+    confirmButtonText: 'Berurutan',
+    denyButtonText: 'Sistem Acak',
+    cancelButtonText: 'Batal'
+  });
+  
+  if (r.isConfirmed || r.isDenied) {
+    const { value: putaran } = await Swal.fire({
+      title: 'Jumlah putaran', input: 'radio', inputValue: '1',
+      inputOptions: { 1: '1 putaran (saling bertemu sekali)', 2: '2 putaran (kandang & tandang)' },
+      showCancelButton: true, confirmButtonText: 'Buat jadwal'
+    });
+    if (!putaran) return;
+    showLoad('Menyusun Jadwal Pertandingan...');
+    try {
+      await run('generateSchedule', PIN, r.isDenied, Number(putaran));
+      await load(true);
+      hideLoad();
+      toast('Jadwal tersusun, lapangan dan istirahat tim sudah diseimbangkan');
+    } catch(e) { err(e); }
+  }
+}
+
+async function doReset() {
+  const { value: key } = await Swal.fire({
+    title: 'Reset Seluruh Data?',
+    text: 'Masukkan kunci reset (diatur di Script properties: RESET_KEY).',
+    input: 'password',
+    inputPlaceholder: 'Kunci reset',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    confirmButtonText: 'Konfirmasi Reset'
+  });
+  if (!key) return;
+
+  showLoad('Menghapus Database...');
+  try {
+    await run('resetLeague', PIN, key);
+    PIN = ''; sessionStorage.removeItem('pin'); VER = null;
+    await load();
+    hideLoad();
+    toast('Sistem dikembalikan ke kondisi awal');
+  } catch(e) { err(e); }
+}
+
+/* ---------- 4. OFFICIAL LIVE MATCH ---------- */
+let isEditUnlocked = false;
+
+function openMatch(id) {
+  const m = D.matches.find(x => x.ID_Match === id);
+  isEditUnlocked = m.Status !== 'Selesai'; // Default kunci jika sudah Selesai
+  cur = { m, h: Number(m.Skor_Home) || 0, a: Number(m.Skor_Away) || 0, wasit: m.Nama_Wasit || '',
+    ev: D.events.filter(e => e.ID_Match === id).map(e => ({id:e.ID_Event, waktu:e.Waktu, idTim:e.ID_Tim, idPemain:e.ID_Pemain, kategori:e.Kategori})) };
+  render();
+}
+
+function pname(id) { const p = D.players.find(x => x.ID_Pemain === id); return p ? '#' + p.No_Punggung + ' ' + p.Nama_Pemain : '?'; }
+const ico = {Gol:'⚽', Hijau:'🟩', Kuning:'🟨', Merah:'🟥'};
+
+async function toggleEditMode() {
+  if (!isEditUnlocked) {
+    const r1 = await Swal.fire({
+      title: 'Buka Kunci Edit Pertandingan?',
+      text: 'Pertandingan ini sudah selesai. Mengubah data akan mempengaruhi klasemen dan statistik secara keseluruhan. Lanjutkan?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d97706',
+      confirmButtonText: 'Ya, Lanjutkan'
+    });
+    if (!r1.isConfirmed) return;
+
+    const r2 = await Swal.fire({
+      title: 'Peringatan Kedua!',
+      text: 'Apakah Anda benar-benar yakin ingin mengedit hasil pertandingan yang sudah final ini?',
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Buka Kunci Edit'
+    });
+    if (!r2.isConfirmed) return;
+
+    isEditUnlocked = true;
+    render();
+  } else {
+    isEditUnlocked = false;
+    render();
+  }
+}
+
+function vMatch() {
+  const m = cur.m, st = m.Status;
+  const isFinished = st === 'Selesai';
+  const lockedAttr = (isFinished && !isEditUnlocked) ? 'disabled style="opacity:0.6; pointer-events:none;"' : '';
+
+  let head = `<div class="flex justify-between items-center mb-2">
+    <button class="btn btn-o text-xs min-h-[36px] bg-white" onclick="leave()">← Kembali</button><span id="sync" class="text-xs text-slate-400"></span>`;
+  if (isFinished) {
+    head += `<button class="btn text-xs min-h-[36px] ${isEditUnlocked ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'}" onclick="toggleEditMode()">
+      ${isEditUnlocked ? '🔒 Kunci Kembali' : '🔓 Buka Edit Match'}
+    </button>`;
+  }
+  head += `</div>
+    <div class="card text-center mb-4"><div class="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-1">${esc(m.Lapangan)} · Pekan ${m.Matchgame} ${badge(st)}</div>
+    <div class="grid items-center mt-2" style="grid-template-columns:1fr auto 1fr">
+      <b class="leading-tight text-sm">${esc(tn(m.ID_Tim_Home))}</b>
+      <span class="text-4xl font-black px-3" id="sc">${st === 'Belum Mulai' ? 'vs' : cur.h + ' - ' + cur.a}</span>
+      <b class="leading-tight text-sm">${esc(tn(m.ID_Tim_Away))}</b>
+    </div></div>`;
+    
+  if (st === 'Belum Mulai') {
+    return head + `<div class="card space-y-3 mb-4">
+      <div class="font-bold text-xs uppercase text-slate-500">Nama Wasit Pertandingan (Wajib)</div>
+      <input id="kick-wasit" class="inp shadow-sm" placeholder="Nama Wasit Utama" value="${esc(cur.wasit)}" oninput="cur.wasit=this.value">
+    </div>
+    <button class="btn btn-g w-full text-3xl font-black tracking-tighter shadow-lg" style="min-height:160px;border-radius:24px" onclick="kick()">K I C K - O F F</button>`;
+  }
+  
+  const stepCol = (k, l, tid) => `
+    <div class="card text-center bg-slate-50 flex flex-col justify-between" ${lockedAttr}>
+      <div>
+        <div class="text-[11px] font-black uppercase text-slate-400 truncate mb-2">${l}</div>
+        <div class="flex items-center justify-between">
+          <button class="btn btn-o btn-sm min-w-[40px] px-0 bg-white" onclick="undoGoal('${k}')">−</button>
+          <span class="text-4xl font-black">${cur[k]}</span>
+          <button class="btn btn-p btn-sm min-w-[40px] px-0" onclick="promptAddGoal('${tid}')">+</button>
+        </div>
+      </div>
+      <button class="btn btn-o btn-xs w-full mt-3 bg-white text-xs py-1 min-h-[32px]" onclick="promptAddCard('${tid}')">+ Tambah Kartu</button>
+    </div>`;
+    
+  return head + `<div ${lockedAttr} class="space-y-3">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      ${stepCol('h', esc(tn(m.ID_Tim_Home)), m.ID_Tim_Home)}
+      ${stepCol('a', esc(tn(m.ID_Tim_Away)), m.ID_Tim_Away)}
+    </div>
+    
+    <div class="font-bold text-xs uppercase text-slate-500 mb-1 pl-1">Daftar Gol & Kartu Terekam</div>
+    <div class="card mb-3 p-2 space-y-2">
+      ${cur.ev.length ? cur.ev.map((e, i) => {
+        const isHome = e.idTim === m.ID_Tim_Home;
+        return `<div class="grid grid-cols-2 gap-2 py-1.5 px-2 border-b border-slate-100 last:border-0 items-center text-xs">
+          <!-- Kolom Tim Kiri (Home) -->
+          <div class="flex items-center bg-slate-50 p-1.5 rounded min-h-[36px] ${isHome ? 'justify-start gap-2' : 'justify-center'}">
+            ${isHome ? `
+              <button class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow" onclick="delEv(${i})" title="Hapus">✕</button>
+              <span>${ico[e.kategori]} <b>${esc(pname(e.idPemain))}</b></span>
+            ` : '<span class="text-slate-300">-</span>'}
+          </div>
+          <!-- Kolom Tim Kanan (Away) -->
+          <div class="flex items-center bg-slate-50 p-1.5 rounded min-h-[36px] ${!isHome ? 'justify-between' : 'justify-center'}">
+            ${!isHome ? `
+              <span><b>${esc(pname(e.idPemain))}</b> ${ico[e.kategori]}</span>
+              <button class="w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow" onclick="delEv(${i})" title="Hapus">✕</button>
+            ` : '<span class="text-slate-300">-</span>'}
+          </div>
+        </div>`;
+      }).join('') : '<div class="text-slate-400 text-xs text-center py-2">Belum ada statistik pemain tercatat.</div>'}
+    </div>
+    
+    <div class="font-bold text-xs uppercase text-slate-500 mb-1 pl-1">Wasit Pertandingan</div>
+    <input class="inp mb-4 shadow-sm" placeholder="Nama Wasit Utama" value="${esc(cur.wasit)}" oninput="cur.wasit=this.value">
+    <button class="btn btn-p w-full text-lg shadow-lg mb-8" onclick="save()">${st === 'Selesai' ? 'Simpan Koreksi' : 'Akhiri Pertandingan'}</button>
+  </div>`;
+}
+
+// "−" menghapus gol terakhir tim itu agar skor dan daftar pencetak gol tetap sinkron
+function undoGoal(k) {
+  const tid = k === 'h' ? cur.m.ID_Tim_Home : cur.m.ID_Tim_Away;
+  const i = cur.ev.map(e => e.kategori === 'Gol' && e.idTim === tid).lastIndexOf(true);
+  if (i >= 0) cur.ev.splice(i, 1);
+  cur[k] = Math.max(0, cur[k] - 1);
+  render(); autoSaveLive();
+}
+
+/* Autosave: di-debounce, berurutan (satu request pada satu waktu), dan mengulang bila gagal */
+let saveTimer = null, saving = false, dirty = false;
+const setSync = st => {
+  const el = $('#sync');
+  if (el) el.textContent = { saving: '⏳ Menyimpan…', ok: '✓ Tersimpan', err: '⚠ Gagal, mencoba lagi…' }[st] || '';
+};
+function autoSaveLive() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(flushLive, 600); }
+async function flushLive() {
+  if (saving) { saveTimer = setTimeout(flushLive, 300); return; }
+  if (!cur || cur.m.Status === 'Belum Mulai' || !dirty) return;
+  saving = true; dirty = false; setSync('saving');
+  const snap = { id: cur.m.ID_Match, h: cur.h, a: cur.a, ev: cur.ev.slice() };
+  try { await run('updateLiveEvent', PIN, snap.id, snap.h, snap.a, snap.ev); setSync('ok'); }
+  catch (e) { dirty = true; setSync('err'); saveTimer = setTimeout(flushLive, 3000); }
+  finally { saving = false; }
+}
+async function leave() {          // tuntaskan simpanan tertunda sebelum keluar dari match
+  clearTimeout(saveTimer);
+  await flushLive();
+  cur = null; render();
+}
+
+async function kick() {
+  const wasitVal = ($('#kick-wasit') ? $('#kick-wasit').value : cur.wasit).trim();
+  if (!wasitVal) {
+    return Swal.fire('Peringatan', 'Nama wasit utama wajib diisi sebelum melakukan Kick-Off!', 'warning');
+  }
+  cur.wasit = wasitVal;
+
+  showLoad('Memulai Pertandingan...');
+  try { 
+    await run('startMatch', PIN, cur.m.ID_Match, cur.wasit); 
+    await load(true); 
+    hideLoad();
+    openMatch(cur.m.ID_Match); 
+  } catch (e) { err(e); render(); }
+}
+
+async function delEv(i) {
+  const e = cur.ev.splice(i, 1)[0];
+  if (e.kategori === 'Gol') { const k = e.idTim === cur.m.ID_Tim_Home ? 'h' : 'a'; cur[k] = Math.max(0, cur[k] - 1); }
+  render();
+  autoSaveLive();
+}
+
+async function promptAddGoal(tid) {
+  const m = cur.m;
+  const players = D.players.filter(p => p.ID_Tim === tid).sort((a, b) => a.No_Punggung - b.No_Punggung);
+  if (!players.length) return Swal.fire('Kosong', 'Tidak ada pemain terdaftar di tim ini.', 'warning');
+  
+  const opt = players.map(p => `<option value="${p.ID_Pemain}">#${p.No_Punggung} ${esc(p.Nama_Pemain)}</option>`).join('');
+  const r = await Swal.fire({
+    title: 'Pilih Pencetak Gol',
+    showCancelButton: true,
+    confirmButtonText: 'Catat Gol',
+    html: `<select id="e-p" class="swal2-select" style="width:85%">${opt}</select>`,
+    preConfirm: () => $('#e-p').value
+  });
+  
+  if (!r.isConfirmed || !r.value) return;
+  const pl = D.players.find(x => x.ID_Pemain === r.value);
+  cur.ev.push({idTim: tid, idPemain: pl.ID_Pemain, kategori: 'Gol'});
+  if (tid === m.ID_Tim_Home) cur.h++; else cur.a++;
+  render();
+  autoSaveLive();
+}
+
+async function promptAddCard(tid) {
+  const m = cur.m;
+  const players = D.players.filter(p => p.ID_Tim === tid).sort((a, b) => a.No_Punggung - b.No_Punggung);
+  if (!players.length) return Swal.fire('Kosong', 'Tidak ada pemain terdaftar di tim ini.', 'warning');
+  
+  const opt = players.map(p => `<option value="${p.ID_Pemain}">#${p.No_Punggung} ${esc(p.Nama_Pemain)}</option>`).join('');
+  const r = await Swal.fire({
+    title: 'Tambah Kartu',
+    showCancelButton: true,
+    confirmButtonText: 'Simpan Kartu',
+    html: `
+      <div class="text-left mb-3 space-y-2 px-6">
+        <label class="block font-bold text-xs text-slate-500 uppercase">Pilih Jenis Kartu:</label>
+        <div class="flex gap-4 justify-around">
+          <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Kuning" checked> 🟨 Kuning</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Merah"> 🟥 Merah</label>
+          <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Hijau"> 🟩 Hijau</label>
+        </div>
+      </div>
+      <div class="text-left px-6">
+        <label class="block font-bold text-xs text-slate-500 uppercase mb-1">Pilih Pemain:</label>
+        <select id="e-p" class="swal2-select" style="width:100%; margin:0;">${opt}</select>
+      </div>
+    `,
+    preConfirm: () => {
+      const selectedRadio = document.querySelector('input[name="swal-card-type"]:checked');
+      return {
+        k: selectedRadio ? selectedRadio.value : 'Kuning',
+        p: document.getElementById('e-p').value
+      };
+    }
+  });
+  
+  if (!r.isConfirmed || !r.value.p) return;
+  const pl = D.players.find(x => x.ID_Pemain === r.value.p);
+  cur.ev.push({idTim: tid, idPemain: pl.ID_Pemain, kategori: r.value.k});
+  render();
+  autoSaveLive();
+}
+
+async function save() {
+  const ok = await Swal.fire({title:`Hasil Akhir: ${cur.h} - ${cur.a}`, text:'Simpan dan publikasikan skor resmi ke klasemen?', icon:'question', showCancelButton:true, confirmButtonColor:'#0f172a', confirmButtonText:'Simpan'});
+  if (!ok.isConfirmed) return;
+  
+  clearTimeout(saveTimer); dirty = false;
+  while (saving) await new Promise(r => setTimeout(r, 100));   // cegah simpanan live lama menimpa hasil akhir
+  showLoad('Menyimpan Hasil Pertandingan...');
+  try {
+    await run('submitMatchResult', PIN, {id:cur.m.ID_Match, skorH:cur.h, skorA:cur.a, wasit:cur.wasit, events:cur.ev});
+    cur = null; 
+    await load(true);
+    hideLoad();
+    toast('Statistik dan hasil akhir berhasil disimpan.');
+  } catch (e) { err(e); }
+}
+
+// Polling ringan: ambil data penuh hanya bila versi berubah; berhenti saat tab tersembunyi
+async function poll() {
+  if (document.hidden || pollBusy || !D || D.needSetup || cur) return;
+  pollBusy = true;
+  try { if ((await run('getVersion')) !== VER) await load(true, true); }
+  catch (e) { /* jaringan putus: coba lagi di putaran berikutnya */ }
+  finally { pollBusy = false; }
+}
+setInterval(poll, 8000);
+document.addEventListener('visibilitychange', poll);
+
+load();
+</script>
+</body>
+</html>
