@@ -98,7 +98,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT ANDA (berakhiran /exec) ======
-const API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwomVRezBVy00eOqtHLCp9Avn8GYdcWLyfYe8hMH8QA2TO8Ax11fQro5cD-1fri4-8/exec';
 
 // Pemanggil API: menggantikan google.script.run
 const run = async (fn, ...a) => {
