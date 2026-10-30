@@ -97,7 +97,7 @@ let D = null, tab = 'jadwal', PIN = sessionStorage.getItem('pin') || '', cur = n
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT (berakhiran /exec) ======
-const API_URL = 'https://script.google.com/macros/s/AKfycbxn-xTyG-cRGnJ4MG5GrlcV1Y4am1HRoleQzkGp9TnpeKlmF7z7Jd8FtQi3o84wSGek/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwfu7CIo8BoG9JOZlSADhn4Xq8FUFCwqii50IVNBxklZFWmxBWTDU3W1N1zZrfdUv5a/exec';
 
 // Pemanggil API: menggantikan google.script.run. Content-Type text/plain menghindari preflight CORS.
 const run = async (fn, ...a) => {
@@ -158,6 +158,9 @@ function render() {
   document.querySelector('nav').style.display = D && D.needSetup ? 'none' : '';
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   if (!D) return;
+  const wide = tab === 'panitia' && !!PIN && !cur && !D.needSetup;   // lebar hanya untuk daftar tim
+  $('#view').classList.toggle('max-w-6xl', wide);
+  $('#view').classList.toggle('max-w-xl', !wide);
   if (D.needSetup) { $('#view').innerHTML = vSetup(); bsInputs(); return; }
   $('#view').innerHTML = tab === 'jadwal' ? vJadwal() : tab === 'klasemen' ? vKlasemen() : tab === 'statistik' ? vStat() : vPanitia();
   bsInputs();
@@ -400,7 +403,7 @@ function vPanitia() {
   
   let h = `<div class="font-black text-lg mb-1">Manajemen Tim & Pemain</div>
     <p class="text-[11px] text-slate-500 mb-4 leading-tight">Ubah nama tim, nomor, atau tambah anggota kapan saja. Minimal 6 pemain per tim.</p>
-    <div id="reg-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pt-6 mt-2">`;
+    <div id="reg-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 pt-6 mt-2">`;
 
   if (D.teams.length === 0) {
     if (!D.isFinalized) h += genTeamCard('', '', [{id:'', no:'', name:''}], 0, false);
@@ -418,6 +421,7 @@ function vPanitia() {
           </div>`;
   }
   h += `</div>`;
+  h += '<div class="max-w-xl mx-auto">';
 
   if (D.isFinalized) {
     h += `<button class="btn btn-p w-full shadow-md mb-8" onclick="saveReg()">💾 Simpan Anggota Tim Saja</button>`;
@@ -450,6 +454,7 @@ function vPanitia() {
         <button class="btn btn-r flex-1 shadow-sm" onclick="doReset()">⚠️ Reset Sistem</button>
       </div>
     </div>`;
+  h += '</div>';
     
   return h;
 }
