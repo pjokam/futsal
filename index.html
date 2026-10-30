@@ -99,7 +99,7 @@ const getSkor = (val) => (val === '' || val == null || isNaN(val)) ? 0 : Number(
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT ANDA (berakhiran /exec) ======
-const API_URL = 'https://script.google.com/macros/s/AKfycbzp_AMAeepOXlGI4OVvj6WWfGcmPwr6vdLIDmvY1cWoKrVsac9ZBxhaTBy3-J3DmQ9d/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyPEo9BNxOmqfS57sze987iyEwMntfL5IntB7GYUuT2mYgcMqBE4AmUx8DGjUC9vzBc/exec';
 
 // Pemanggil API: menggantikan google.script.run
 const run = async (fn, ...a) => {
