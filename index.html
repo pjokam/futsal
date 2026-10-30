@@ -97,7 +97,7 @@ let D = null, tab = 'jadwal', PIN = sessionStorage.getItem('pin') || '', cur = n
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT (berakhiran /exec) ======
-const API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzGHpeDH-1RHu8f5ujGdYNfLYmU14qtg_KBXCXV8ctQXEcnb79Me-fvhVAMKz2TUfdo/exec';
 
 // Pemanggil API: menggantikan google.script.run. Content-Type text/plain menghindari preflight CORS.
 const run = async (fn, ...a) => {
