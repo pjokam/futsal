@@ -455,11 +455,9 @@ function vPanitia() {
 
   const g = {}; D.matches.forEach(m => (g[m.Lapangan] = g[m.Lapangan] || []).push(m));
   if (D.matches.length > 0) {
-    // Ambil semua daftar lapangan dari D.lapangan atau dari match yang ada
     const allFields = [...new Set([...(D.lapangan || []), ...Object.keys(g)])].filter(Boolean);
     const colCount = allFields.length || 1;
 
-    // Grid dinamis: 1 kolom di mobile, N kolom di desktop (md:) sesuai jumlah lapangan
     h += `<div class="grid grid-cols-1 md:grid-cols-${colCount} gap-4">`;
     allFields.forEach(k => {
       const matchesInField = g[k] || [];
@@ -481,17 +479,14 @@ function vPanitia() {
   }
   h += `</div>`;
 
-  // Tombol Kontrol Sistem
+  // Tombol Kontrol Sistem (Dinamis: Buat Jadwal atau Buat Ulang Jadwal)
+  const hasMatches = D.matches && D.matches.length > 0;
+  const btnJadwalText = hasMatches ? '⚠️ Buat Ulang Jadwal' : '📅 Buat Jadwal Pertandingan';
+  const btnJadwalClass = hasMatches ? 'border-red-400 text-red-600 hover:bg-red-50 bg-white' : 'bg-white shadow-sm';
+
   h += `<div class="border-t-2 border-slate-200 border-dashed mt-8 mb-6 pt-6"></div>
     <div class="max-w-xl mx-auto flex flex-col gap-3">
-      const hasMatches = D.matches && D.matches.length > 0;
-      const btnJadwalText = hasMatches ? '⚠️ Buat Ulang Jadwal' : '📅 Buat Jadwal Pertandingan';
-      const btnJadwalClass = hasMatches ? 'border-red-400 text-red-600 hover:bg-red-50 bg-white' : 'bg-white shadow-sm';
-      
-      h += `<div class="border-t-2 border-slate-200 border-dashed mt-8 mb-6 pt-6"></div>
-        <div class="max-w-xl mx-auto flex flex-col gap-3">
-          <button class="btn btn-o w-full ${btnJadwalClass}" onclick="gen()">${btnJadwalText}</button>
-      `; // ...lanjutkan kode tombol keluar & reset di bawahnya
+      <button class="btn btn-o w-full ${btnJadwalClass}" onclick="gen()">${btnJadwalText}</button>
       <div class="flex gap-3">
         <button class="btn btn-o flex-1 bg-white shadow-sm" onclick="logout()">Keluar</button>
         <button class="btn btn-r flex-1 shadow-sm" onclick="doReset()">⚠️ Reset Sistem</button>
@@ -500,6 +495,9 @@ function vPanitia() {
     
   return h;
 }
+
+
+  
 
 function genTeamCard(tid, tname, players, idx, isFinalized) {
   const c = colors[idx % colors.length];
