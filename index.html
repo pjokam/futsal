@@ -99,7 +99,7 @@ const getSkor = (val) => (val === '' || val == null || isNaN(val)) ? 0 : Number(
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT ANDA (berakhiran /exec) ======
-const API_URL = 'https://script.google.com/macros/s/AKfycbyd2h38OV8sLi5YQQ6uef5hC19JKBVlGNrkW4IYpKsa-imsa1myUQngPBBtzf7XUCDH/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyPEo9BNxOmqfS57sze987iyEwMntfL5IntB7GYUuT2mYgcMqBE4AmUx8DGjUC9vzBc/exec';
 
 // Pemanggil API: menggantikan google.script.run
 const run = async (fn, ...a) => {
@@ -153,7 +153,13 @@ async function load(quiet, bg) {
   if (bg && tab === 'panitia' && PIN) return;
   render();
 }
-function go(t) { tab = t; cur = null; render(); scrollTo(0, 0); }
+async function go(t) {
+  if (cur) {
+    if (cur.m.Status === 'Live') return toast('Akhiri pertandingan dulu sebelum pindah menu', 'warning');
+    await leave(true);
+  }
+  tab = t; cur = null; render(); scrollTo(0, 0);
+}
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.t));
 
 function render() {
@@ -694,7 +700,7 @@ async function login() {
     else { hideLoad(); Swal.fire({icon:'error', title:'Akses ditolak', text:'PIN salah.'}); }
   } catch (e) { err(e); }
 }
-function logout() { PIN = ''; sessionStorage.removeItem('pin'); Object.keys(matchKeys).forEach(k => delete matchKeys[k]); render(); }
+function logout() { PIN = ''; sessionStorage.removeItem('pin'); sessionStorage.removeItem('mkeys'); sessionStorage.removeItem('curMatch'); render(); }
 
 async function gen() {
   if (D.matches && D.matches.length > 0) {
@@ -778,13 +784,28 @@ async function doReset() {
 /* ---------- 4. OFFICIAL LIVE MATCH ---------- */
 let isEditUnlocked = false;
 
-const matchKeys = {};   // PIN match yang sudah terbukti benar di sesi ini (hanya di memori, hilang saat refresh/logout)
+// PIN match yang sudah terbukti benar disimpan per-tab (sessionStorage) agar refresh tidak menghilangkan akses.
+// Kunci dihapus begitu panitia meninggalkan match (Kembali / pindah menu / simpan hasil / logout).
+const getKeys = () => { try { return JSON.parse(sessionStorage.getItem('mkeys') || '{}'); } catch (e) { return {}; } };
+const setKey = (id, p) => { const k = getKeys(); k[id] = p; sessionStorage.setItem('mkeys', JSON.stringify(k)); };
+const delKey = id => { const k = getKeys(); delete k[id]; sessionStorage.setItem('mkeys', JSON.stringify(k)); };
 
 async function openMatch(id) {
+  // Selalu ambil data terbaru dari server agar skor/gol terakhir tidak hilang dan status kunci akurat
+  showLoad('Membuka pertandingan...');
+  try { D = await run('getAll'); VER = D.ver; } catch (e) { return err(e); }
+  hideLoad();
   const m = D.matches.find(x => x.ID_Match === id);
   if (!m) return;
 
-  let matchPin = matchKeys[id];
+  let matchPin = getKeys()[id] || '';
+  if (matchPin) {                       // PIN tersimpan (mis. setelah refresh): tetap diverifikasi ulang ke server
+    try { await run('openMatchAuth', PIN, id, matchPin); }
+    catch (e) {
+      delKey(id); matchPin = '';
+      if (/Sesi berakhir/.test(e.message || '')) return err(e);
+    }
+  }
   if (!matchPin) {
     const terkunci = !!m.Terkunci;
     // PIN diverifikasi/diklaim di SERVER lewat preConfirm; dialog baru tertutup bila PIN diterima
@@ -814,7 +835,7 @@ async function openMatch(id) {
     });
     if (!value) return;
     matchPin = value;
-    matchKeys[id] = matchPin;
+    setKey(id, matchPin);
   }
 
   isEditUnlocked = m.Status !== 'Selesai';
@@ -826,6 +847,7 @@ async function openMatch(id) {
     wasit: m.Nama_Wasit || '',
     ev: D.events.filter(e => e.ID_Match === id).map(e => ({id:e.ID_Event, waktu:e.Waktu, idTim:e.ID_Tim, idPemain:e.ID_Pemain, kategori:e.Kategori})) 
   };
+  sessionStorage.setItem('curMatch', id);
   render();
 }
 
@@ -868,7 +890,7 @@ function vMatch() {
   const lockedAttr = (isFinished && !isEditUnlocked) ? 'disabled style="opacity:0.6; pointer-events:none;"' : '';
 
   let head = `<div class="flex justify-between items-center mb-2">
-    <button class="btn btn-o text-xs min-h-[36px] bg-white" onclick="leave()">← Kembali</button><span id="sync" class="text-xs text-slate-400"></span>`;
+    ${st === 'Live' ? '<span></span>' : '<button class="btn btn-o text-xs min-h-[36px] bg-white" onclick="leave()">← Kembali</button>'}<span id="sync" class="text-xs text-slate-400"></span>`;
   if (isFinished) {
     head += `<button class="btn text-xs min-h-[36px] ${isEditUnlocked ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'}" onclick="toggleEditMode()">
       ${isEditUnlocked ? '🔒 Kunci Kembali' : '🔓 Buka Edit Match'}
@@ -958,16 +980,20 @@ async function flushLive() {
   try { await run('updateLiveEvent', PIN, snap.id, snap.h, snap.a, snap.ev, snap.pin); setSync('ok'); }
   catch (e) {
     if (/PIN pertandingan/.test(e.message || '')) {   // PIN match tidak lagi valid: hentikan retry
-      delete matchKeys[snap.id]; cur = null; render(); err(e); return;
+      delKey(snap.id); sessionStorage.removeItem('curMatch'); cur = null; render(); err(e); return;
     }
     dirty = true; setSync('err'); saveTimer = setTimeout(flushLive, 3000);
   }
   finally { saving = false; }
 }
-async function leave() {
+async function leave(noRender) {
   clearTimeout(saveTimer);
+  while (saving) await new Promise(r => setTimeout(r, 100));
   await flushLive();
-  cur = null; render();
+  if (cur) delKey(cur.m.ID_Match);
+  sessionStorage.removeItem('curMatch');
+  cur = null;
+  if (!noRender) render();
 }
 
 async function kick() {
@@ -1065,6 +1091,7 @@ async function save() {
   showLoad('Menyimpan Hasil Pertandingan...');
   try {
     await run('submitMatchResult', PIN, {id:cur.m.ID_Match, skorH:cur.h, skorA:cur.a, wasit:cur.wasit, events:cur.ev, matchPin:cur.matchPin});
+    delKey(cur.m.ID_Match); sessionStorage.removeItem('curMatch');
     cur = null; 
     await load(true);
     hideLoad();
@@ -1082,7 +1109,20 @@ async function poll() {
 setInterval(poll, 8000);
 document.addEventListener('visibilitychange', poll);
 
-load();
+// Jangan sampai progres hilang: simpan segera saat tab disembunyikan, dan peringatkan bila ada yang belum tersimpan
+document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(saveTimer); flushLive(); } });
+window.addEventListener('pagehide', () => { if (dirty) { clearTimeout(saveTimer); flushLive(); } });
+window.addEventListener('beforeunload', e => { if (dirty || saving) { e.preventDefault(); e.returnValue = ''; } });
+
+// Setelah refresh: kembali otomatis ke match yang sedang dibuka (data diambil dari server)
+async function resumeMatch() {
+  const id = sessionStorage.getItem('curMatch');
+  if (!id || !PIN || !D || D.needSetup) return;
+  tab = 'panitia';
+  await openMatch(id);
+  if (!cur) { sessionStorage.removeItem('curMatch'); render(); }
+}
+load().then(resumeMatch);
 </script>
 </body>
 </html>
