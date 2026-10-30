@@ -97,7 +97,7 @@ let D = null, tab = 'jadwal', PIN = sessionStorage.getItem('pin') || '', cur = n
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT (berakhiran /exec) ======
-const API_URL = 'https://script.google.com/macros/s/AKfycbwfu7CIo8BoG9JOZlSADhn4Xq8FUFCwqii50IVNBxklZFWmxBWTDU3W1N1zZrfdUv5a/exec';
+const API_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
 
 // Pemanggil API: menggantikan google.script.run. Content-Type text/plain menghindari preflight CORS.
 const run = async (fn, ...a) => {
@@ -396,7 +396,7 @@ function vStat() {
 /* ---------- 3. PANITIA DASHBOARD ---------- */
 function vPanitia() {
   if (!PIN) return `<div class="card space-y-3"><div class="font-black text-lg">Otorisasi Panitia</div>
-    <input id="pin" type="password" inputmode="numeric" class="inp" placeholder="Masukkan PIN">
+    <input id="pin" type="password" autocomplete="current-password" class="inp" placeholder="Masukkan PIN">
     <button class="btn btn-p w-full" onclick="login()">Buka Kunci Panel</button></div>`;
     
   if (cur) return vMatch();
