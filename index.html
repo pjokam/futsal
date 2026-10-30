@@ -224,7 +224,7 @@ function mCard(m, click, isPanitiaView) {
   const isFinished = m.Status === 'Selesai';
   const homeWin = isFinished && hScore > aScore, awayWin = isFinished && aScore > hScore;
 
-  let subText = isPanitiaView ? (isFinished ? '<div class="text-[11px] text-slate-400 text-center mt-1.5">Ketuk untuk lihat/edit rincian</div>' : '<div class="text-[11px] text-emerald-600 font-bold text-center mt-1.5">Ketuk untuk mulai pertandingan</div>') : '';
+  let subText = isPanitiaView ? (isFinished ? '<div class="text-[11px] text-slate-400 text-center mt-1.5">Ketuk untuk lihat/edit rincian</div>' : '<div class="text-[11px] text-emerald-600 font-bold text-center mt-1.5">Ketuk untuk Kembali ke pertandingan</div>') : '';
 
   return `<div class="card ${click ? 'cursor-pointer hover:border-slate-400 transition-all hover:shadow-md' : ''}" ${click ? `onclick="openMatch('${m.ID_Match}')"` : ''}>
     <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>Matchgame ${m.Matchgame}</span>${badge(m.Status)}</div>
@@ -778,11 +778,51 @@ async function doReset() {
 /* ---------- 4. OFFICIAL LIVE MATCH ---------- */
 let isEditUnlocked = false;
 
-function openMatch(id) {
+async function openMatch(id) {
   const m = D.matches.find(x => x.ID_Match === id);
+  
+  // Cek apakah pertandingan sudah memiliki PIN (sedang dipegang panitia lain atau sudah dikunci)
+  let matchPin = m.PIN_Match || '';
+  
+  if (!matchPin) {
+    // Jika belum ada PIN match, minta panitia membuat/memasukkan PIN untuk match ini
+    const { value: enteredPin } = await Swal.fire({
+      title: 'Masukkan PIN Pertandingan',
+      text: 'Buat atau masukkan PIN rahasia untuk mengamankan match ini agar tidak diubah panitia lain.',
+      input: 'password',
+      inputPlaceholder: 'Contoh: 1234',
+      showCancelButton: true,
+      confirmButtonText: 'Masuk Match',
+      cancelButtonText: 'Batal'
+    });
+    if (!enteredPin) return;
+    matchPin = enteredPin;
+  } else {
+    // Jika sudah ada PIN match, verifikasi PIN dari panitia yang ingin mengakses
+    const { value: enteredPin } = await Swal.fire({
+      title: 'Match Terkunci oleh PIN',
+      text: `Pertandingan ini dikunci dengan PIN oleh panitia sebelumnya. Masukkan PIN untuk membuka:`,
+      input: 'password',
+      inputPlaceholder: 'Masukkan PIN Match',
+      showCancelButton: true,
+      confirmButtonText: 'Buka',
+      cancelButtonText: 'Batal'
+    });
+    if (!enteredPin) return;
+    if (enteredPin !== matchPin) {
+      return Swal.fire('Akses Ditolak', 'PIN pertandingan salah!', 'error');
+    }
+  }
+
   isEditUnlocked = m.Status !== 'Selesai';
-  cur = { m, h: getSkor(m.Skor_Home), a: getSkor(m.Skor_Away), wasit: m.Nama_Wasit || '',
-    ev: D.events.filter(e => e.ID_Match === id).map(e => ({id:e.ID_Event, waktu:e.Waktu, idTim:e.ID_Tim, idPemain:e.ID_Pemain, kategori:e.Kategori})) };
+  cur = { 
+    m, 
+    matchPin: matchPin,
+    h: getSkor(m.Skor_Home), 
+    a: getSkor(m.Skor_Away), 
+    wasit: m.Nama_Wasit || '',
+    ev: D.events.filter(e => e.ID_Match === id).map(e => ({id:e.ID_Event, waktu:e.Waktu, idTim:e.ID_Tim, idPemain:e.ID_Pemain, kategori:e.Kategori})) 
+  };
   render();
 }
 
