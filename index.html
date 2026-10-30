@@ -159,9 +159,14 @@ function render() {
   document.querySelector('nav').style.display = D && D.needSetup ? 'none' : '';
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
   if (!D) return;
-  const wide = tab === 'panitia' && !!PIN && !cur && !D.needSetup;
+  
+  // Perlebar area desktop jika di tab Jadwal (multi-kolom) atau Panitia
+  const isJadwalCols = tab === 'jadwal' && (!cur) && D.lapangan && D.lapangan.length > 1;
+  const isPanitiaCols = tab === 'panitia' && !!PIN && !cur && !D.needSetup;
+  const wide = isPanitiaCols || isJadwalCols;
   $('#view').classList.toggle('max-w-6xl', wide);
   $('#view').classList.toggle('max-w-xl', !wide);
+  
   if (D.needSetup) { $('#view').innerHTML = vSetup(); bsInputs(); return; }
   $('#view').innerHTML = tab === 'jadwal' ? vJadwal() : tab === 'klasemen' ? vKlasemen() : tab === 'statistik' ? vStat() : vPanitia();
   bsInputs();
@@ -215,22 +220,13 @@ function badge(s) {
 function mCard(m, click, isPanitiaView) {
   const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
   const isFinished = m.Status === 'Selesai';
-  const hScore = Number(m.Skor_Home) || 0;
-  const aScore = Number(m.Skor_Away) || 0;
-  const homeWin = isFinished && hScore > aScore;
-  const awayWin = isFinished && aScore > hScore;
+  const hScore = Number(m.Skor_Home) || 0, aScore = Number(m.Skor_Away) || 0;
+  const homeWin = isFinished && hScore > aScore, awayWin = isFinished && aScore > hScore;
 
-  let subText = '';
-  if (isPanitiaView) {
-    if (isFinished) {
-      subText = '<div class="text-[11px] text-slate-400 text-center mt-1.5">Ketuk untuk lihat/edit rincian</div>';
-    } else {
-      subText = '<div class="text-[11px] text-emerald-600 font-bold text-center mt-1.5">Ketuk untuk mulai pertandingan</div>';
-    }
-  }
+  let subText = isPanitiaView ? (isFinished ? '<div class="text-[11px] text-slate-400 text-center mt-1.5">Ketuk untuk lihat/edit rincian</div>' : '<div class="text-[11px] text-emerald-600 font-bold text-center mt-1.5">Ketuk untuk mulai pertandingan</div>') : '';
 
   return `<div class="card ${click ? 'cursor-pointer hover:border-slate-400 transition-all hover:shadow-md' : ''}" ${click ? `onclick="openMatch('${m.ID_Match}')"` : ''}>
-    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>${esc(m.Lapangan)} · Pekan ${m.Matchgame}</span>${badge(m.Status)}</div>
+    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>Pekan ${m.Matchgame}</span>${badge(m.Status)}</div>
     <div class="grid items-center gap-2 mt-2" style="grid-template-columns:1fr auto 1fr">
       <div class="font-bold text-right flex items-center justify-end gap-1.5">
         ${homeWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
@@ -260,18 +256,18 @@ function toggleCollapse(id, event) {
   }
 }
 
-function pubCard(m) {
+function pubCard(m, showField = false) {
   const matchEvents = D.events.filter(e => e.ID_Match === m.ID_Match);
   const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
   const isExp = !!expandedMatches[m.ID_Match];
   const isFinished = m.Status === 'Selesai';
-  const hScore = Number(m.Skor_Home) || 0;
-  const aScore = Number(m.Skor_Away) || 0;
-  const homeWin = isFinished && hScore > aScore;
-  const awayWin = isFinished && aScore > hScore;
+  const hScore = Number(m.Skor_Home) || 0, aScore = Number(m.Skor_Away) || 0;
+  const homeWin = isFinished && hScore > aScore, awayWin = isFinished && aScore > hScore;
+  
+  const fieldText = showField ? `${esc(m.Lapangan)} · Pekan ${m.Matchgame}` : `Pekan ${m.Matchgame}`;
 
   return `<div class="card mb-2">
-    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>${esc(m.Lapangan)}</span>${badge(m.Status)}</div>
+    <div class="flex justify-between text-xs text-slate-500 font-semibold"><span>${fieldText}</span>${badge(m.Status)}</div>
     <div class="grid items-center gap-2 mt-2" style="grid-template-columns:1fr auto 1fr">
       <div class="font-bold text-right flex items-center justify-end gap-1.5">
         ${homeWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
@@ -283,26 +279,19 @@ function pubCard(m) {
         ${awayWin ? '<span class="inline-block animate-bounce text-sm">🏆</span>' : ''}
       </div>
     </div>
-
     <div class="border-t border-slate-100 mt-3 pt-2 flex justify-between items-center cursor-pointer select-none" onclick="toggleCollapse('${m.ID_Match}', event)">
       <span class="text-[11px] text-slate-500 font-bold">Rincian Gol & Kartu</span>
       <span id="icon-${m.ID_Match}" class="text-slate-400 font-bold transition-transform duration-200" style="transform: ${isExp ? 'rotate(180deg)' : 'rotate(0deg)'}">▼</span>
     </div>
-
     <div id="collapse-${m.ID_Match}" class="${isExp ? '' : 'hidden'} mt-2 pt-2 border-t border-dashed border-slate-200 space-y-1.5 text-xs">
       ${matchEvents.length ? matchEvents.map(e => {
         const isHome = e.ID_Tim === m.ID_Tim_Home;
-        const p = D.players.find(x => x.ID_Pemain === e.ID_Pemain);
-        const pName = p ? `#${p.No_Punggung} ${p.Nama_Pemain}` : '?';
+        const pName = D.players.find(x => x.ID_Pemain === e.ID_Pemain) ? `#${D.players.find(x => x.ID_Pemain === e.ID_Pemain).No_Punggung} ${D.players.find(x => x.ID_Pemain === e.ID_Pemain).Nama_Pemain}` : '?';
         return `<div class="flex items-center justify-between py-1 px-1">
-          <div class="${isHome ? 'text-left font-medium text-slate-700' : 'invisible'}">
-            ${isHome ? `<span>${ico[e.Kategori]} <b>${esc(pName)}</b></span>` : ''}
-          </div>
-          <div class="${!isHome ? 'text-right font-medium text-slate-700' : 'invisible'}">
-            ${!isHome ? `<span><b>${esc(pName)}</b> ${ico[e.Kategori]}</span>` : ''}
-          </div>
+          <div class="${isHome ? 'text-left font-medium text-slate-700' : 'invisible'}">${isHome ? `<span>${ico[e.Kategori]} <b>${esc(pName)}</b></span>` : ''}</div>
+          <div class="${!isHome ? 'text-right font-medium text-slate-700' : 'invisible'}">${!isHome ? `<span><b>${esc(pName)}</b> ${ico[e.Kategori]}</span>` : ''}</div>
         </div>`;
-      }).join('') : '<div class="text-slate-400 text-center py-1">Belum ada statistik tercatat.</div>'}
+      }).join('') : '<div class="text-slate-400 text-center py-1">Belum ada statistik.</div>'}
     </div>
   </div>`;
 }
@@ -312,16 +301,43 @@ function setStat(st) { fStat = st; render(); }
 
 function vJadwal() {
   if (!D.matches.length) return '<div class="card text-center text-slate-500">Live Skor belum tersedia / jadwal belum disusun.</div>';
-  const chips = '<div class="flex gap-2 overflow-x-auto pb-1">' + ['Semua', 'Live', 'Belum Mulai', 'Selesai'].map(st =>
+  const chips = '<div class="flex gap-2 overflow-x-auto pb-4">' + ['Semua', 'Live', 'Belum Mulai', 'Selesai'].map(st =>
     `<button class="btn btn-sm ${fStat === st ? 'btn-p' : 'btn-o'}" style="min-height:36px;white-space:nowrap" onclick="setStat('${st}')">${st}</button>`).join('') + '</div>';
+  
   const list = D.matches.filter(m => fStat === 'Semua' || m.Status === fStat);
   if (!list.length) return chips + '<div class="card text-center text-slate-500">Tidak ada pertandingan pada filter ini.</div>';
+  
   const live = fStat === 'Semua' ? list.filter(m => m.Status === 'Live') : [];
   const rest = list.filter(m => live.indexOf(m) < 0);
-  const g = {}; rest.forEach(m => (g[m.Matchgame] = g[m.Matchgame] || []).push(m));
-  return chips
-    + (live.length ? '<h2 class="font-black text-lg pt-2">🔴 Sedang berlangsung</h2>' + live.map(pubCard).join('') : '')
-    + Object.keys(g).map(k => '<h2 class="font-black text-lg pt-2">Matchgame ' + k + '</h2>' + g[k].map(pubCard).join('')).join('');
+  const g = {}; rest.forEach(m => (g[m.Lapangan] = g[m.Lapangan] || []).push(m));
+  
+  let h = chips;
+  if (live.length) {
+    // Pada section Live Skor (atas), beri keterangan Lapangan karena dipisah dari kolom bawah
+    h += '<h2 class="font-black text-lg mb-3">🔴 Sedang berlangsung</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">' + live.map(m => pubCard(m, true)).join('') + '</div>';
+  }
+  
+  // Konstruksi Kolom Lapangan
+  const allFields = [...new Set([...(D.lapangan || []), ...Object.keys(g)])].filter(Boolean);
+  const colCount = allFields.length || 1;
+
+  h += `<div class="grid grid-cols-1 md:grid-cols-${colCount} gap-4">`;
+  allFields.forEach(k => {
+    const matchesInField = g[k] || [];
+    h += `<div class="bg-slate-200/60 p-3 rounded-2xl border border-slate-300/80 flex flex-col gap-2">
+            <div class="font-black text-sm text-slate-800 bg-white px-3 py-2 rounded-xl border border-slate-200 text-center shadow-sm uppercase tracking-wide flex items-center justify-center gap-1.5">
+              🏟️ <span>${esc(k)}</span>
+            </div>
+            <div class="space-y-2.5 mt-1">
+              ${matchesInField.length 
+                ? matchesInField.map(m => pubCard(m, false)).join('') 
+                : '<div class="text-xs text-slate-400 text-center py-6 bg-white rounded-xl border border-dashed border-slate-200">Belum ada jadwal</div>'
+              }
+            </div>
+          </div>`;
+  });
+  h += `</div>`;
+  return h;
 }
 
 const formOf = id => D.matches
