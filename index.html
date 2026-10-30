@@ -43,8 +43,8 @@
     --bs-btn-active-bg:#dc2626;--bs-btn-active-border-color:#dc2626;--bs-btn-active-color:#fff;
     --bs-btn-disabled-bg:#ef4444;--bs-btn-disabled-border-color:#ef4444;--bs-btn-disabled-color:#fff}
   .btn-o{--bs-btn-border-width:2px;--bs-btn-border-color:var(--ink);--bs-btn-color:var(--ink);
-    --bs-btn-hover-bg:var(--ink);--bs-btn-hover-color:#fff;--bs-btn-hover-border-color:var(--ink);
-    --bs-btn-active-bg:var(--ink);--bs-btn-active-color:#fff;--bs-btn-active-border-color:var(--ink)}
+    --bs-btn-hover-bg:#f1f5f9;--bs-btn-hover-color:var(--ink);--bs-btn-hover-border-color:var(--ink);
+    --bs-btn-active-bg:#e2e8f0;--bs-btn-active-color:var(--ink);--bs-btn-active-border-color:var(--ink)}
   .btn-sm{--bs-btn-font-size:.8rem}
   .btn:disabled{opacity:.55;pointer-events:none}
 
@@ -86,7 +86,7 @@
 </header>
 <main id="view" class="p-3 max-w-xl mx-auto space-y-3"></main>
 <nav class="fixed bottom-0 inset-x-0 flex shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-10" style="background:var(--ink);padding-bottom:env(safe-area-inset-bottom,0px)">
-  <button data-t="jadwal">🔴<br>Live Skor</button>
+  <button data-t="jadwal"><span class="inline-block animate-bounce text-sm">⚽</span><br>Live Skor</button>
   <button data-t="klasemen">🏆<br>Klasemen</button>
   <button data-t="statistik">📊<br>Statistik</button>
   <button data-t="panitia">🎽<br>Panitia</button>
@@ -95,6 +95,7 @@
 <script>
 let D = null, tab = 'jadwal', PIN = sessionStorage.getItem('pin') || '', cur = null;
 const $ = s => document.querySelector(s);
+const getSkor = (val) => (val === '' || val == null || isNaN(val)) ? 0 : Number(val);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ====== ISI DENGAN URL WEB APP APPS SCRIPT ANDA (berakhiran /exec) ======
@@ -212,15 +213,15 @@ async function doSetup() {
 
 /* ---------- 2. PUBLIK (LIVE SKOR, KLASEMEN, STAT) ---------- */
 function badge(s) { 
-  if (s === 'Live') return '<span class="badge rounded-pill live">LIVE</span>';
+  if (s === 'Live') return '<span class="badge rounded-pill bg-red-100 text-red-600 border border-red-200 flex items-center gap-1.5 px-2 py-0.5"><span class="inline-block animate-bounce text-[10px]">⚽</span> LIVE</span>';
   if (s === 'Selesai') return '<span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Selesai</span>';
   return '<span class="text-xs font-bold text-slate-400">' + esc(s) + '</span>'; 
 }
 
 function mCard(m, click, isPanitiaView) {
-  const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
+  const hScore = getSkor(m.Skor_Home), aScore = getSkor(m.Skor_Away);
+  const sc = m.Status === 'Belum Mulai' ? 'vs' : (hScore + ' - ' + aScore);
   const isFinished = m.Status === 'Selesai';
-  const hScore = Number(m.Skor_Home) || 0, aScore = Number(m.Skor_Away) || 0;
   const homeWin = isFinished && hScore > aScore, awayWin = isFinished && aScore > hScore;
 
   let subText = isPanitiaView ? (isFinished ? '<div class="text-[11px] text-slate-400 text-center mt-1.5">Ketuk untuk lihat/edit rincian</div>' : '<div class="text-[11px] text-emerald-600 font-bold text-center mt-1.5">Ketuk untuk mulai pertandingan</div>') : '';
@@ -258,10 +259,10 @@ function toggleCollapse(id, event) {
 
 function pubCard(m, showField = false) {
   const matchEvents = D.events.filter(e => e.ID_Match === m.ID_Match);
-  const sc = m.Status === 'Belum Mulai' ? 'vs' : (m.Skor_Home + ' - ' + m.Skor_Away);
+  const hScore = getSkor(m.Skor_Home), aScore = getSkor(m.Skor_Away);
+  const sc = m.Status === 'Belum Mulai' ? 'vs' : (hScore + ' - ' + aScore);
   const isExp = !!expandedMatches[m.ID_Match];
   const isFinished = m.Status === 'Selesai';
-  const hScore = Number(m.Skor_Home) || 0, aScore = Number(m.Skor_Away) || 0;
   const homeWin = isFinished && hScore > aScore, awayWin = isFinished && aScore > hScore;
   
   const fieldText = showField ? `${esc(m.Lapangan)} · Matchgame ${m.Matchgame}` : `Matchgame ${m.Matchgame}`;
@@ -314,7 +315,7 @@ function vJadwal() {
   let h = chips;
   if (live.length) {
     // Pada section Live Skor (atas), beri keterangan Lapangan karena dipisah dari kolom bawah
-    h += '<h2 class="font-black text-lg mb-3">🔴 Sedang berlangsung</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">' + live.map(m => pubCard(m, true)).join('') + '</div>';
+    h += '<h2 class="font-black text-lg mb-3 flex items-center gap-2"><span class="inline-block animate-bounce">⚽</span> Sedang berlangsung</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">' + live.map(m => pubCard(m, true)).join('') + '</div>';
   }
   
   // Konstruksi Kolom Lapangan
@@ -483,7 +484,14 @@ function vPanitia() {
   // Tombol Kontrol Sistem
   h += `<div class="border-t-2 border-slate-200 border-dashed mt-8 mb-6 pt-6"></div>
     <div class="max-w-xl mx-auto flex flex-col gap-3">
-      <button class="btn btn-o w-full bg-white shadow-sm" onclick="gen()">📅 Buat Jadwal Pertandingan</button>
+      const hasMatches = D.matches && D.matches.length > 0;
+      const btnJadwalText = hasMatches ? '⚠️ Buat Ulang Jadwal' : '📅 Buat Jadwal Pertandingan';
+      const btnJadwalClass = hasMatches ? 'border-red-400 text-red-600 hover:bg-red-50 bg-white' : 'bg-white shadow-sm';
+      
+      h += `<div class="border-t-2 border-slate-200 border-dashed mt-8 mb-6 pt-6"></div>
+        <div class="max-w-xl mx-auto flex flex-col gap-3">
+          <button class="btn btn-o w-full ${btnJadwalClass}" onclick="gen()">${btnJadwalText}</button>
+      `; // ...lanjutkan kode tombol keluar & reset di bawahnya
       <div class="flex gap-3">
         <button class="btn btn-o flex-1 bg-white shadow-sm" onclick="logout()">Keluar</button>
         <button class="btn btn-r flex-1 shadow-sm" onclick="doReset()">⚠️ Reset Sistem</button>
@@ -691,6 +699,17 @@ async function login() {
 function logout() { PIN = ''; sessionStorage.removeItem('pin'); render(); }
 
 async function gen() {
+  if (D.matches && D.matches.length > 0) {
+    const ok = await Swal.fire({
+      title: 'Jadwal Sudah Terbentuk!',
+      text: 'Membuat jadwal baru otomatis akan MENGHAPUS jadwal yang sudah ada beserta hasilnya. Lanjutkan?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Buat Ulang'
+    });
+    if (!ok.isConfirmed) return;
+  }
   const t1 = D.teams[0] ? esc(D.teams[0].Nama_Tim) : 'Tim Urutan 1';
   const t2 = D.teams[1] ? esc(D.teams[1].Nama_Tim) : 'Tim Urutan 2';
   const tLast = D.teams.length > 0 ? esc(D.teams[D.teams.length - 1].Nama_Tim) : 'Tim Terakhir';
@@ -764,7 +783,7 @@ let isEditUnlocked = false;
 function openMatch(id) {
   const m = D.matches.find(x => x.ID_Match === id);
   isEditUnlocked = m.Status !== 'Selesai';
-  cur = { m, h: Number(m.Skor_Home) || 0, a: Number(m.Skor_Away) || 0, wasit: m.Nama_Wasit || '',
+  cur = { m, h: getSkor(m.Skor_Home), a: getSkor(m.Skor_Away), wasit: m.Nama_Wasit || '',
     ev: D.events.filter(e => e.ID_Match === id).map(e => ({id:e.ID_Event, waktu:e.Waktu, idTim:e.ID_Tim, idPemain:e.ID_Pemain, kategori:e.Kategori})) };
   render();
 }
@@ -938,7 +957,7 @@ async function promptAddGoal(tid) {
     title: 'Pilih Pencetak Gol',
     showCancelButton: true,
     confirmButtonText: 'Catat Gol',
-    html: `<select id="e-p" class="swal2-select" style="width:85%">${opt}</select>`,
+    html: `<div class="px-3"><select id="e-p" class="inp" style="width:100%; margin-top:10px; cursor:pointer">${opt}</select></div>`,
     preConfirm: () => $('#e-p').value
   });
   
@@ -961,17 +980,17 @@ async function promptAddCard(tid) {
     showCancelButton: true,
     confirmButtonText: 'Simpan Kartu',
     html: `
-      <div class="text-left mb-3 space-y-2 px-6">
+      <div class="text-left mb-4 space-y-2 px-4">
         <label class="block font-bold text-xs text-slate-500 uppercase">Pilih Jenis Kartu:</label>
-        <div class="flex gap-4 justify-around">
+        <div class="flex gap-4 justify-around bg-slate-50 border border-slate-200 p-3 rounded-xl shadow-sm">
           <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Kuning" checked> 🟨 Kuning</label>
           <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Merah"> 🟥 Merah</label>
           <label class="flex items-center gap-1 cursor-pointer font-bold"><input type="radio" name="swal-card-type" value="Hijau"> 🟩 Hijau</label>
         </div>
       </div>
-      <div class="text-left px-6">
+      <div class="text-left px-4">
         <label class="block font-bold text-xs text-slate-500 uppercase mb-1">Pilih Pemain:</label>
-        <select id="e-p" class="swal2-select" style="width:100%; margin:0;">${opt}</select>
+        <select id="e-p" class="inp" style="width:100%; margin:0; cursor:pointer">${opt}</select>
       </div>
     `,
     preConfirm: () => {
