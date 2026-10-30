@@ -694,7 +694,7 @@ async function login() {
     else { hideLoad(); Swal.fire({icon:'error', title:'Akses ditolak', text:'PIN salah.'}); }
   } catch (e) { err(e); }
 }
-function logout() { PIN = ''; sessionStorage.removeItem('pin'); render(); }
+function logout() { PIN = ''; sessionStorage.removeItem('pin'); Object.keys(matchKeys).forEach(k => delete matchKeys[k]); render(); }
 
 async function gen() {
   if (D.matches && D.matches.length > 0) {
@@ -778,40 +778,43 @@ async function doReset() {
 /* ---------- 4. OFFICIAL LIVE MATCH ---------- */
 let isEditUnlocked = false;
 
+const matchKeys = {};   // PIN match yang sudah terbukti benar di sesi ini (hanya di memori, hilang saat refresh/logout)
+
 async function openMatch(id) {
   const m = D.matches.find(x => x.ID_Match === id);
-  
-  // Cek apakah pertandingan sudah memiliki PIN (sedang dipegang panitia lain atau sudah dikunci)
-  let matchPin = m.PIN_Match || '';
-  
+  if (!m) return;
+
+  let matchPin = matchKeys[id];
   if (!matchPin) {
-    // Jika belum ada PIN match, minta panitia membuat/memasukkan PIN untuk match ini
-    const { value: enteredPin } = await Swal.fire({
-      title: 'Masukkan PIN Pertandingan',
-      text: 'Buat atau masukkan PIN rahasia untuk mengamankan match ini agar tidak diubah panitia lain.',
+    const terkunci = !!m.Terkunci;
+    // PIN diverifikasi/diklaim di SERVER lewat preConfirm; dialog baru tertutup bila PIN diterima
+    const { value } = await Swal.fire({
+      title: terkunci ? 'Match Terkunci' : 'Buat PIN Pertandingan',
+      text: terkunci
+        ? 'Match ini sudah dikunci panitia lain. Masukkan PIN match untuk membukanya.'
+        : 'Buat PIN (min. 4 karakter) untuk mengamankan match ini. Hanya yang tahu PIN ini yang bisa mengelola match.',
       input: 'password',
-      inputPlaceholder: 'Contoh: 1234',
+      inputAttributes: { autocomplete: 'off' },
+      inputPlaceholder: terkunci ? 'PIN match' : 'Buat PIN match',
       showCancelButton: true,
-      confirmButtonText: 'Masuk Match',
-      cancelButtonText: 'Batal'
+      confirmButtonText: terkunci ? 'Buka' : 'Kunci & Masuk',
+      cancelButtonText: 'Batal',
+      showLoaderOnConfirm: true,
+      allowOutsideClick: () => !Swal.isLoading(),
+      preConfirm: async (v) => {
+        v = String(v || '').trim();
+        if (!v) { Swal.showValidationMessage('PIN wajib diisi'); return false; }
+        try { await run('openMatchAuth', PIN, id, v); return v; }
+        catch (e) {
+          const msg = (e && e.message || String(e)).replace(/^Error:\s*/, '');
+          if (/Sesi berakhir/.test(msg)) { Swal.close(); err(e); return false; }
+          Swal.showValidationMessage(msg); return false;
+        }
+      }
     });
-    if (!enteredPin) return;
-    matchPin = enteredPin;
-  } else {
-    // Jika sudah ada PIN match, verifikasi PIN dari panitia yang ingin mengakses
-    const { value: enteredPin } = await Swal.fire({
-      title: 'Match Terkunci oleh PIN',
-      text: `Pertandingan ini dikunci dengan PIN oleh panitia sebelumnya. Masukkan PIN untuk membuka:`,
-      input: 'password',
-      inputPlaceholder: 'Masukkan PIN Match',
-      showCancelButton: true,
-      confirmButtonText: 'Buka',
-      cancelButtonText: 'Batal'
-    });
-    if (!enteredPin) return;
-    if (enteredPin !== matchPin) {
-      return Swal.fire('Akses Ditolak', 'PIN pertandingan salah!', 'error');
-    }
+    if (!value) return;
+    matchPin = value;
+    matchKeys[id] = matchPin;
   }
 
   isEditUnlocked = m.Status !== 'Selesai';
@@ -951,9 +954,14 @@ async function flushLive() {
   if (saving) { saveTimer = setTimeout(flushLive, 300); return; }
   if (!cur || cur.m.Status === 'Belum Mulai' || !dirty) return;
   saving = true; dirty = false; setSync('saving');
-  const snap = { id: cur.m.ID_Match, h: cur.h, a: cur.a, ev: cur.ev.slice() };
-  try { await run('updateLiveEvent', PIN, snap.id, snap.h, snap.a, snap.ev); setSync('ok'); }
-  catch (e) { dirty = true; setSync('err'); saveTimer = setTimeout(flushLive, 3000); }
+  const snap = { id: cur.m.ID_Match, h: cur.h, a: cur.a, ev: cur.ev.slice(), pin: cur.matchPin };
+  try { await run('updateLiveEvent', PIN, snap.id, snap.h, snap.a, snap.ev, snap.pin); setSync('ok'); }
+  catch (e) {
+    if (/PIN pertandingan/.test(e.message || '')) {   // PIN match tidak lagi valid: hentikan retry
+      delete matchKeys[snap.id]; cur = null; render(); err(e); return;
+    }
+    dirty = true; setSync('err'); saveTimer = setTimeout(flushLive, 3000);
+  }
   finally { saving = false; }
 }
 async function leave() {
@@ -971,10 +979,11 @@ async function kick() {
 
   showLoad('Memulai Pertandingan...');
   try { 
-    await run('startMatch', PIN, cur.m.ID_Match, cur.wasit); 
-    await load(true); 
+    await run('startMatch', PIN, cur.m.ID_Match, cur.wasit, cur.matchPin);
+    await load(true);
+    cur.m = D.matches.find(x => x.ID_Match === cur.m.ID_Match) || cur.m;   // PIN tidak ditanyakan lagi
     hideLoad();
-    openMatch(cur.m.ID_Match); 
+    render();
   } catch (e) { err(e); render(); }
 }
 
@@ -1055,7 +1064,7 @@ async function save() {
   while (saving) await new Promise(r => setTimeout(r, 100));
   showLoad('Menyimpan Hasil Pertandingan...');
   try {
-    await run('submitMatchResult', PIN, {id:cur.m.ID_Match, skorH:cur.h, skorA:cur.a, wasit:cur.wasit, events:cur.ev});
+    await run('submitMatchResult', PIN, {id:cur.m.ID_Match, skorH:cur.h, skorA:cur.a, wasit:cur.wasit, events:cur.ev, matchPin:cur.matchPin});
     cur = null; 
     await load(true);
     hideLoad();
